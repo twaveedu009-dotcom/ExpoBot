@@ -1,321 +1,135 @@
-Digital Twin
-Enterprise RAG‑Based Knowledge Assistant
-📌 Overview
-Digital Twin is a modular Retrieval‑Augmented Generation (RAG) platform designed for enterprise internal knowledge use cases such as HR policy Q&A and document intelligence.
+# Expoproj - API & Application
 
-The system follows a role‑based architecture, where:
+A full-stack application with Node.js/TypeScript backend API, MySQL database, Redis caching, and Solr search integration.
 
-Admins manage documents, analytics, and users
+## Project Overview
 
-End users only consume information
+This project provides a complete backend infrastructure with:
+- **API Server**: Node.js + TypeScript (runs on `localhost:9090`)
+- **Database**: MySQL 8.0 (port `3307`)
+- **Caching**: Redis (port `6379`)
+- **Search Engine**: Solr 9.8.1 (port `8983`)
+- **Job Queue**: Bull Board (port `9999`)
+- **LLM Integration**: Ollama API support (port `11434`)
 
-It is built with clear separation of concerns across UI, API orchestration, and RAG intelligence layers.
+## Prerequisites
 
-🏗️ High‑Level Architecture
-React UI
-   ↓
-Node.js API (Orchestrator & Access Control)
-   ↓
-Python RAG Engine
-   ↓
-RAG Knowledge Database
-Infrastructure Services
+- Docker & Docker Compose
+- Node.js 18+ with pnpm package manager
+- Linux/macOS environment
 
-MySQL → metadata, users, document records
+## Quick Start
 
-Redis → caching & session support
+### 1. Clone Repository
 
-Docker → service orchestration
+```bash
+git clone <repository-url>
+cd expoproj
+```
 
-👥 User Roles & Permissions
-🔑 Admin
-Upload documents to RAG database
+### 2. Start Docker Services
 
-View system analytics
-
-Monitor user activity
-
-Access all user query history
-
-Manage RAG modes
-
-👤 User
-Ask questions via chat UI
-
-View own query history
-
-Read AI‑generated answers
-
-No access to uploads or analytics
-
-🧩 Core Modules
-1️⃣ UI Layer (ui/)
-Technology: React + pnpm
-
-Login / SSO
-
-Chat interface
-
-Answer display
-
-User history view
-
-Role‑based UI rendering (Admin / User)
-
-⚠️ UI never communicates directly with RAG.
-
-2️⃣ API Layer (api/)
-Technology: Node.js + TypeScript
-
-Acts as the central control layer.
-
-Responsibilities:
-
-Authentication & role enforcement
-
-Admin‑only file upload APIs
-
-Routing requests to correct RAG mode
-
-Collecting analytics & usage metrics
-
-Returning formatted responses to UI
-
-3️⃣ RAG Engine (rag/)
-Technology: Python (Conda environment)
-
-Responsibilities:
-
-Document ingestion (Admin only)
-
-Embedding & retrieval logic
-
-Mode‑specific RAG processing
-
-Returning retrieved answers to API
-
-All uploaded files are stored in the RAG database and used for retrieval.
-
-4️⃣ Infrastructure Layer
-Dockerized Services
-
-MySQL
-
-Chroma DB
-
-Redis
-
-These services must be running before API & RAG.
-
-▶️ How to Run the Project
-Prerequisites
-- Docker 24+ and Docker Compose v2
-- Node.js 18+ (recommended 20+), pnpm 9+
-- Python 3.10+ (virtualenv or conda)
-- Optional: NVIDIA GPU + CUDA 12.x for faster RAG inference
-
-✅ Step 1: Start Infrastructure
+```bash
 docker compose up -d
-Verify: docker compose ps
+```
 
-Services started by Compose
-- MySQL 8.0 → 3306 (seeded via api/src/mysql/scripts/*.sql)
-- Redis → 6379 
-- Solr → 8983 (core: mycore)
+This starts:
+- MySQL database
+- Redis cache
+- Solr search engine
 
-✅ Step 2: Configure the app
-- Global config: config/default.yml (also mirrored at api/config/default.yml)
-   - Backend API: host/port, JWT secrets
-   - RAG backend: host/port/url
-   - Vector store and uploads paths
-   - Models (Ollama/HuggingFace)
-   - Azure AD SSO: TENANT_ID, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
-- Placeholders like <PROJECT_ROOT_DIR> are auto‑expanded at runtime.
+### 3. Install Dependencies
 
-✅ Step 3: Start the API (Node.js)
+```bash
+cd api
+pnpm install
+```
+
+### 4. Run the API Server
+
+```bash
+pnpm dev
+```
+
+The API will start on `http://localhost:9090`
+
+## Service Endpoints
+
+| Service | URL | Port |
+|---------|-----|------|
+| API Server | http://localhost:9090 | 9090 |
+| Bull Board (Jobs) | http://localhost:9999 | 9999 |
+| Solr Admin | http://localhost:8983/solr | 8983 |
+| Redis | localhost | 6379 |
+| MySQL | localhost | 3307 |
+| Ollama API | http://localhost:11434 | 11434 |
+
+## Configuration
+
+Database and Redis credentials are defined in `docker-compose.yml`. Update them in the docker-compose configuration file as needed before deployment.
+
+Database details:
+- **Database Name**: `aviary-db`
+- **Default User**: Set in docker-compose.yml
+
+## Stopping Services
+
+```bash
+docker compose down
+```
+
+To remove data volumes:
+```bash
+docker compose down -v
+```
+
+## Project Structure
+
+```
+expoproj/
+├── api/                    # Node.js API application
+│   ├── src/
+│   │   ├── main.ts         # Application entry point
+│   │   ├── service/        # Business logic
+│   │   └── mysql/          # Database scripts
+│   └── package.json
+├── data/                   # Volumes for persistent data
+│   └── volumes/
+│       ├── mysql-data/
+│       ├── redis-data/
+│       └── solr-data/
+└── docker-compose.yml      # Service configuration
+```
+
+## Troubleshooting
+
+**Port 3307 already in use:**
+```bash
+sudo fuser -k 3307/tcp
+docker compose down -v
+docker compose up -d
+```
+
+**MySQL connection failed:**
+- Ensure MySQL container is running: `docker logs expoproj-mysql-1`
+- Check `api/config/default.yml` uses correct port and credentials
+- Verify environment variables in `docker-compose.yml`
+
+**API won't start:**
+```bash
 cd api
 pnpm install
 pnpm dev
-Runs Koa API on 9090 with role‑based access and file uploads.
-Optional:
-- Background worker: pnpm worker
-- Bull Board (job monitor): http://localhost:9999
+```
 
-✅ Step 4: Start the RAG Engine (Python/FastAPI)
-cd rag
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Starts FastAPI on 8000; first run downloads models to rag/data/model.
-Notes:
-- GPU is auto‑detected in dev-init.sh; CPU fallback is supported.
-- Retrieval config in config/default.yml → RAG.Retrieval
+## Environment Setup
 
-✅ Step 5: Start the UI (React/Vite)
-cd ui-2
-pnpm install
-pnpm dev
-Launches on http://localhost:7001 (proxy /dev-api → http://localhost:9090)
+Create `.env` file in `api/` directory for local development:
+```env
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=3307
+REDIS_URL=redis://localhost:6379
+```
 
-🔐 Login & SSO
-Standard UI
-http://localhost:7001
-SSO Login
-http://localhost:7001/login?sso=true
-Authentication and role validation are handled by the API layer.
-
-📤 Document Upload (Admin‑Only)
-Only Admin users can upload documents
-
-Uploaded documents are:
-
-Validated
-
-Stored in the RAG database
-
-Indexed for retrieval
-
-Users can immediately query newly uploaded content
-
-📊 Analytics & Monitoring (Admin‑Only)
-Admins can view:
-
-Total queries per user
-
-Document usage statistics
-
-RAG mode usage
-
-Query frequency & trends
-
-Complete chat history of all users
-
-🔁 RAG Mode Configuration
-RAG behavior is configured in:
-
-config/default.yml
-Example:
-
-RAG:
-  mode: hr_policy
-⚠️ Changing modes requires re‑uploading documents.
-
-➕ Adding a New RAG Mode
-Only two files are required.
-
-API Side
-api/src/ragclass/<mode_name>.ts
-Must implement:
-
-export interface RAGProcessor {
-  upload(...)
-  search(...)
-}
-RAG Side (Python)
-rag/api/modeAPI/<mode_name>_api.py
-Optional Solr access:
-
-rag/utils/solr.py → get_solr_doc_by_id()
-🔄 End‑to‑End Workflow
-Admin uploads documents → stored in RAG DB
-
-User submits a query via UI
-
-API validates user & routes request
-
-Python RAG engine retrieves relevant content
-
-Answer returned to API
-
-API sends formatted response to UI
-
-Query & response logged for analytics
-
-🎯 Key Design Principles
-Role‑based access control
-
-Modular microservice architecture
-
-Admin‑controlled knowledge ingestion
-
-Scalable RAG mode extension
-
-Enterprise‑ready auditability
-
-🧠 One‑Line Summary
-Aviary Lite is an enterprise RAG platform where admins manage knowledge and analytics, while users securely access AI‑generated answers through a React UI, orchestrated by a Node.js API and powered by Python‑based RAG engines.
-
-—
-
-Appendix: Complete Project Setup and Configuration
-
-Project Ports
-- UI (Vite dev server): 7001
-- API (Koa): 9090
-- RAG (FastAPI): 8000
-- FAQ Cache (optional): 8001
-- Bull Board (jobs UI): 9999
-- MySQL: 3306
-- Redis: 6379
-- Solr: 8983
-
-Database Initialization (MySQL)
-- Compose mounts api/src/mysql/scripts to /docker-entrypoint-initdb.d
-- Creates core tables (user, group, roles, files, messages, support_tickets, notifications, etc.)
-- Seeds default users and roles. Change passwords immediately in production.
-- Data persists in data/volumes/data/mysql-data
-
-Configuration Files
-- Root: config/default.yml
-- API: api/config/default.yml (kept in sync with root)
-- Key sections:
-   - Backend: host, port, jwtSecret, jwtRefreshSecret, tokenizer, context window
-   - RAG.Backend: host, port, url
-   - RAG.VectorStore: type, path (default rag/app/rag_db)
-   - RAG.Uploads: rootDir, filesDir, uploadDirectory, maxFileSize
-   - RAG.useFaqCache and FaqCacheSettings.cacheApiUrl (default http://localhost:8001)
-   - Models: chat/summary/translate (Ollama), ragEmbeddingModel, ragRerankModel (HF)
-   - AZURE_AD: TENANT_ID, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
-
-Environment Variables
-- API: UPLOAD_DIR (default uploads)
-- Python: standard Hugging Face envs (e.g., HF_HOME) respected; models cached under rag/data/model by config
-
-Optional Services
-- FAQ Cache (faq_database)
-   - cd faq_database && pip install -r requirements.txt && python main.py
-   - Runs at 8001 with /query, /status, /health endpoints
-   - Enable by setting RAG.useFaqCache: true and adjusting RAG.FaqCacheSettings
-- Solr (text extraction and page indexing)
-   - dev-init.sh adds schema fields and precreates core mycore
-   - Used by splitByPage pipeline for PDF indexing and hybrid search
-
-Background Jobs
-- A Bull queue is included for async tasks
-- Start worker with pnpm worker
-- Monitor at http://localhost:9999
-
-API Endpoints (high level)
-- Auth/User: /user/login, /user/logout, /user/getInfo, /user/list, /user/create, /user/update
-- Files: /api/files/upload, /api/files, /api/files/tags, /api/files/preview/:storage_key, /api/files/download/:storage_key
-- RAG tasks: /api/gen-task, /api/gen-task-output/*, /api/gen-task/getChatTitle
-- Insights: /api/live-queries, /api/chat-history, /api/recent-chats
-- Admin: /api/admin/users, /api/admin/activity, /api/admin/stats
-
-RAG Engine Endpoints
-- POST /upload (single file to collection)
-- POST /upload-pdf-pages/solr (batch pages by Solr doc IDs)
-- POST /search and /search/hybrid
-- PUT /update, DELETE /collection, DELETE /record
-- POST /check_embedding_model
-
-Add a New RAG Mode
-- API: api/src/ragclass/<mode_name>.ts implements RAGProcessor with upload() and search()
-- RAG: rag/api/modeAPI/<mode_name>_api.py provides complementary endpoints
-- Register and route mode in existing controllers; update config/default.yml if needed
-
-Troubleshooting
-- Ports in use: change Frontend/Backend/RAG ports in config/default.yml
-- CUDA not available: set RAG.Retrieval.throwErrorWhenCUDAUnavailable: false (CPU fallback)
-- Model downloads slow: pre‑set HF_HOME or cacheDir to a local mirror; ensure internet access
-- MySQL init didn’t run: remove data/volumes/data/mysql-data and re‑up Docker (will re‑seed)
+Update credentials in `docker-compose.yml` and corresponding config files before deployment.
